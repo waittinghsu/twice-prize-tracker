@@ -1,0 +1,14 @@
+{
+  "name": "twice-prize-tracker",
+  "version": "1.0.0",
+  "description": "TWICE fanpla prize tracker - monitors prize quantities and logs draws to Notion",
+  "main": "scraper.js",
+  "scripts": {
+    "start": "node scraper.js"
+  },
+  "dependencies": {
+    "@notionhq/client": "^2.2.15",
+    "dotenv": "^16.4.5",
+    "puppeteer": "^22.0.0"
+  }
+}
