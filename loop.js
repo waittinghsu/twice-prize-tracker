@@ -52,5 +52,28 @@ server.listen(PORT, () => {
   console.log(`[${new Date().toISOString()}] Server listening on port ${PORT}`)
 })
 
+// 啟動時初始化：同步 main，切換到 logs branch
+function initBranch() {
+  const token = process.env.GITHUB_TOKEN
+  if (!token) {
+    console.warn('[init] GITHUB_TOKEN not set, skipping branch init')
+    return
+  }
+  try {
+    const REPO_DIR = __dirname
+    execSync(`git -C "${REPO_DIR}" remote set-url origin https://${token}@github.com/waittinghsu/twice-prize-tracker.git`, { stdio: 'pipe' })
+    execSync(`git -C "${REPO_DIR}" config user.email "bot@twice-prize-tracker.com"`, { stdio: 'pipe' })
+    execSync(`git -C "${REPO_DIR}" config user.name "Prize Tracker Bot"`, { stdio: 'pipe' })
+    execSync(`git -C "${REPO_DIR}" fetch origin`, { stdio: 'pipe' })
+    execSync(`git -C "${REPO_DIR}" pull origin main`, { stdio: 'pipe' })
+    execSync(`git -C "${REPO_DIR}" checkout -B logs origin/logs`, { stdio: 'pipe' })
+    execSync(`git -C "${REPO_DIR}" merge main --no-edit`, { stdio: 'pipe' })
+    console.log('[init] Switched to logs branch, synced with main')
+  } catch (err) {
+    console.error('[init] Branch init failed:', err.message)
+  }
+}
+
+initBranch()
 run() // 啟動時立刻跑一次
 setInterval(run, INTERVAL)
