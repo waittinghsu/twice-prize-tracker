@@ -4,7 +4,7 @@
   "description": "TWICE fanpla prize tracker - monitors prize quantities and logs draws to Notion",
   "main": "scraper.js",
   "scripts": {
-    "start": "node scraper.js"
+    "start": "node loop.js"
   },
   "dependencies": {
     "@notionhq/client": "^2.2.15",
