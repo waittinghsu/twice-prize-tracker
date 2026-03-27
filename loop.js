@@ -32,7 +32,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Webhook 觸發
-  if (req.method === 'POST' && req.url.startsWith('/trigger')) {
+  if ((req.method === 'POST' || req.method === 'GET') && req.url.startsWith('/trigger')) {
     const token = new URL(req.url, `http://localhost`).searchParams.get('token')
     if (WEBHOOK_TOKEN && token !== WEBHOOK_TOKEN) {
       res.writeHead(401)
