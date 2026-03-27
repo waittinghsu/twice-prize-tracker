@@ -3,6 +3,7 @@ require('dotenv').config()
 const { fetchPrizeQuantities } = require('./lib/fetch-page')
 const { getPrizeState, updatePrizeState, appendDrawLog } = require('./lib/notion')
 const { appendLog, commitAndPush } = require('./lib/log')
+const { sendTelegram } = require('./lib/telegram')
 
 // Activity ends 2026/4/28 JST
 const END_DATE = new Date('2026-04-29T00:00:00+09:00')
@@ -71,6 +72,14 @@ async function main() {
       })
 
       commitAndPush(`draw: ${item.name} -${drawnCount} (${item.remaining} left)`)
+
+      await sendTelegram({
+        name: item.name,
+        drawnCount,
+        beforeRemaining: prevRemaining,
+        afterRemaining: item.remaining,
+        detectedAt: now,
+      })
 
       await updatePrizeState(stateRow.pageId, {
         remaining: item.remaining,
