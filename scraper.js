@@ -63,7 +63,7 @@ async function main() {
         detectedAt: now,
       })
 
-      appendLog({
+      const logEntry = appendLog({
         name: item.name,
         drawnCount,
         beforeRemaining: prevRemaining,
@@ -71,7 +71,7 @@ async function main() {
         detectedAt: now,
       })
 
-      commitAndPush(`draw: ${item.name} -${drawnCount} (${item.remaining} left)`)
+      commitAndPush(`draw: ${item.name} -${drawnCount} (${item.remaining} left)`, logEntry)
 
       await sendTelegram({
         name: item.name,
