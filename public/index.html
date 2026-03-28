@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TWICE 抽獎追蹤</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --bg2: #0f0f1a;
+      --border: #1a1a3e;
+      --cyan: #00f5ff;
+      --pink: #ff00aa;
+      --yellow: #ffe600;
+      --green: #00ff88;
+      --purple: #9b59ff;
+      --text: #c0c8e0;
+      --text-dim: #4a5280;
+      --glow-cyan: 0 0 8px #00f5ff88;
+      --glow-pink: 0 0 8px #ff00aa88;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', 'Consolas', monospace;
+      min-height: 100vh;
+      padding: 20px;
+      background-image:
+        linear-gradient(rgba(0,245,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,245,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 {
+      font-size: 1.4rem;
+      letter-spacing: 0.15em;
+      color: var(--cyan);
+      text-shadow: var(--glow-cyan);
+      text-transform: uppercase;
+    }
+    .header .subtitle {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      letter-spacing: 0.1em;
+    }
+
+    /* Buttons */
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .btn {
+      padding: 6px 16px;
+      border: 1px solid;
+      background: transparent;
+      font-family: inherit;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.15s;
+    }
+    .btn-cyan {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+    .btn-cyan:hover { background: #00f5ff22; box-shadow: var(--glow-cyan); }
+    .btn-pink {
+      border-color: var(--pink);
+      color: var(--pink);
+    }
+    .btn-pink:hover { background: #ff00aa22; box-shadow: var(--glow-pink); }
+    .btn-interval {
+      border-color: var(--text-dim);
+      color: var(--text-dim);
+      padding: 6px 12px;
+    }
+    .btn-interval.active {
+      border-color: var(--yellow);
+      color: var(--yellow);
+      box-shadow: 0 0 6px #ffe60066;
+    }
+    .btn-interval:hover { border-color: var(--yellow); color: var(--yellow); }
+
+    /* State Cards */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 768px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 400px) { .cards { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 14px 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .card[data-code="A-1"]::before { background: #00f5ff; }
+    .card[data-code="A-2"]::before { background: #ff00aa; }
+    .card[data-code="B"]::before   { background: #ffe600; }
+    .card[data-code="C"]::before   { background: #00ff88; }
+
+    .card-code {
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .card-name {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+      line-height: 1.3;
+    }
+    .card-remaining {
+      font-size: 1.8rem;
+      font-weight: bold;
+      line-height: 1;
+    }
+    .card[data-code="A-1"] .card-remaining { color: #00f5ff; text-shadow: var(--glow-cyan); }
+    .card[data-code="A-2"] .card-remaining { color: #ff00aa; text-shadow: var(--glow-pink); }
+    .card[data-code="B"]   .card-remaining { color: #ffe600; text-shadow: 0 0 8px #ffe60088; }
+    .card[data-code="C"]   .card-remaining { color: #00ff88; text-shadow: 0 0 8px #00ff8888; }
+
+    .card-total { font-size: 0.85rem; color: var(--text-dim); }
+    .card-bar {
+      margin-top: 10px;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .card-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.5s ease;
+    }
+    .card[data-code="A-1"] .card-bar-fill { background: #00f5ff; }
+    .card[data-code="A-2"] .card-bar-fill { background: #ff00aa; }
+    .card[data-code="B"]   .card-bar-fill { background: #ffe600; }
+    .card[data-code="C"]   .card-bar-fill { background: #00ff88; }
+
+    /* Chart */
+    .chart-container {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 20px;
+      margin-bottom: 24px;
+      position: relative;
+    }
+    .chart-title {
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .chart-wrap {
+      position: relative;
+      height: 260px;
+    }
+
+    /* Tables */
+    .tables-title {
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 900px) { .tables-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .tables-grid { grid-template-columns: 1fr; } }
+
+    .table-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .table-header {
+      padding: 8px 12px;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .table-header .code { font-weight: bold; }
+    .table-header .count { font-size: 0.65rem; color: var(--text-dim); }
+    .table-card[data-code="A-1"] .table-header { color: #00f5ff; }
+    .table-card[data-code="A-2"] .table-header { color: #ff00aa; }
+    .table-card[data-code="B"]   .table-header { color: #ffe600; }
+    .table-card[data-code="C"]   .table-header { color: #00ff88; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.68rem; }
+    th {
+      padding: 6px 10px;
+      text-align: left;
+      color: var(--text-dim);
+      font-weight: normal;
+      letter-spacing: 0.08em;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 5px 10px;
+      border-bottom: 1px solid #1a1a3e55;
+      color: var(--text);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(0,245,255,0.04); }
+    .drawn-count {
+      font-weight: bold;
+    }
+    .table-card[data-code="A-1"] .drawn-count { color: #00f5ff; }
+    .table-card[data-code="A-2"] .drawn-count { color: #ff00aa; }
+    .table-card[data-code="B"]   .drawn-count { color: #ffe600; }
+    .table-card[data-code="C"]   .drawn-count { color: #00ff88; }
+    .empty-msg { padding: 12px; font-size: 0.7rem; color: var(--text-dim); text-align: center; }
+
+    /* Footer */
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .countdown {
+      color: var(--cyan);
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+    }
+    .status-dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .loading { opacity: 0.5; }
+    .error-msg { color: #ff4466; font-size: 0.7rem; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🎫 TWICE 抽獎追蹤</h1>
+    <div class="subtitle">CHANCE.FANPLA.JP/TWICE/471 &nbsp;|&nbsp; AUTO MONITOR</div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn btn-cyan" id="btn-refresh" onclick="refresh()">⟳ REFRESH</button>
+  <button class="btn btn-pink" id="btn-trigger" onclick="triggerScraper()">▶ 觸發檢查</button>
+  <button class="btn btn-interval" id="btn-5" onclick="setInterval5()">5 MIN</button>
+  <button class="btn btn-interval active" id="btn-10" onclick="setInterval10()">10 MIN</button>
+  <span id="error-msg" class="error-msg" style="display:none"></span>
+</div>
+
+<div class="cards" id="cards">
+  <div class="card loading" data-code="A-1">
+    <div class="card-code">A-1</div>
+    <div class="card-name">終演後お見送り会</div>
+    <div class="card-remaining">--</div>
+    <div class="card-total">/ --</div>
+    <div class="card-bar"><div class="card-bar-fill" style="width:0%"></div></div>
+  </div>
+  <div class="card loading" data-code="A-2">
+    <div class="card-code">A-2</div>
+    <div class="card-name">直筆サイン入り ユニットポラ</div>
+    <div class="card-remaining">--</div>
+    <div class="card-total">/ --</div>
+    <div class="card-bar"><div class="card-bar-fill" style="width:0%"></div></div>
+  </div>
+  <div class="card loading" data-code="B">
+    <div class="card-code">B</div>
+    <div class="card-name">直筆サイン入り ソロポラ</div>
+    <div class="card-remaining">--</div>
+    <div class="card-total">/ --</div>
+    <div class="card-bar"><div class="card-bar-fill" style="width:0%"></div></div>
+  </div>
+  <div class="card loading" data-code="C">
+    <div class="card-code">C</div>
+    <div class="card-name">直筆サイン入り OFFICIAL GOODS</div>
+    <div class="card-remaining">--</div>
+    <div class="card-total">/ --</div>
+    <div class="card-bar"><div class="card-bar-fill" style="width:0%"></div></div>
+  </div>
+</div>
+
+<div class="chart-container">
+  <div class="chart-title">▸ DRAW TIMELINE &nbsp; X=時間 &nbsp; Y=品項 &nbsp; 點大小=抽出數量</div>
+  <div class="chart-wrap">
+    <canvas id="chart"></canvas>
+  </div>
+</div>
+
+<div class="tables-title">▸ 各品項抽取紀錄</div>
+<div class="tables-grid">
+  <div class="table-card" data-code="A-1">
+    <div class="table-header"><span class="code">A-1</span><span class="count" id="count-A-1">0 筆</span></div>
+    <div id="table-A-1"><div class="empty-msg">— 尚無紀錄 —</div></div>
+  </div>
+  <div class="table-card" data-code="A-2">
+    <div class="table-header"><span class="code">A-2</span><span class="count" id="count-A-2">0 筆</span></div>
+    <div id="table-A-2"><div class="empty-msg">— 尚無紀錄 —</div></div>
+  </div>
+  <div class="table-card" data-code="B">
+    <div class="table-header"><span class="code">B</span><span class="count" id="count-B">0 筆</span></div>
+    <div id="table-B"><div class="empty-msg">— 尚無紀錄 —</div></div>
+  </div>
+  <div class="table-card" data-code="C">
+    <div class="table-header"><span class="code">C</span><span class="count" id="count-C">0 筆</span></div>
+    <div id="table-C"><div class="empty-msg">— 尚無紀錄 —</div></div>
+  </div>
+</div>
+
+<div class="footer">
+  <div><span class="status-dot"></span><span id="last-updated">--</span></div>
+  <div class="countdown">下次更新：<span id="countdown">--:--</span></div>
+</div>
+
+<script>
+  // === 品項設定 ===
+  const ITEMS = [
+    { code: 'A-1', name: '終演後お見送り会',          color: '#00f5ff' },
+    { code: 'A-2', name: '直筆サイン入り ユニットポラ', color: '#ff00aa' },
+    { code: 'B',   name: '直筆サイン入り ソロポラ',    color: '#ffe600' },
+    { code: 'C',   name: '直筆サイン入り OFFICIAL GOODS', color: '#00ff88' },
+  ]
+
+  function getCode(name) {
+    const item = ITEMS.find(i => i.name === name)
+    return item ? item.code : name
+  }
+  function getYIndex(name) {
+    const idx = ITEMS.findIndex(i => i.name === name)
+    return idx >= 0 ? idx : 0
+  }
+
+  // === Chart 初始化 ===
+  let chart
+  function initChart() {
+    const ctx = document.getElementById('chart').getContext('2d')
+    chart = new Chart(ctx, {
+      type: 'bubble',
+      data: { datasets: ITEMS.map((item, i) => ({
+        label: item.code,
+        data: [],
+        backgroundColor: item.color + '99',
+        borderColor: item.color,
+        borderWidth: 1,
+      }))},
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 400 },
+        scales: {
+          x: {
+            type: 'time',
+            time: { unit: 'day', displayFormats: { hour: 'MM/dd HH:mm', day: 'MM/dd' } },
+            grid: { color: '#1a1a3e' },
+            ticks: { color: '#4a5280', font: { family: 'Courier New', size: 10 } },
+          },
+          y: {
+            min: -0.5,
+            max: 3.5,
+            grid: { color: '#1a1a3e' },
+            ticks: {
+              color: '#4a5280',
+              font: { family: 'Courier New', size: 10 },
+              stepSize: 1,
+              callback: (val) => ITEMS[val] ? ITEMS[val].code : '',
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            labels: { color: '#4a5280', font: { family: 'Courier New', size: 10 }, boxWidth: 10 },
+          },
+          tooltip: {
+            backgroundColor: '#0f0f1a',
+            borderColor: '#1a1a3e',
+            borderWidth: 1,
+            titleColor: '#c0c8e0',
+            bodyColor: '#8090b0',
+            titleFont: { family: 'Courier New' },
+            bodyFont: { family: 'Courier New', size: 11 },
+            callbacks: {
+              title: (items) => {
+                const d = items[0].raw
+                return formatJST(new Date(d.x))
+              },
+              label: (item) => {
+                const d = item.raw
+                return [
+                  ` ${d.name}`,
+                  ` 抽出：${d.drawnCount} 個`,
+                  ` 剩餘：${d.beforeRemaining} → ${d.afterRemaining}`,
+                ]
+              },
+            },
+          },
+        },
+      },
+    })
+  }
+
+  // === 資料更新 ===
+  function updateChart(draws) {
+    ITEMS.forEach((item, i) => {
+      chart.data.datasets[i].data = draws
+        .filter(d => d.name === item.name)
+        .map(d => ({
+          x: new Date(d.detectedAt),
+          y: i,
+          r: Math.max(5, d.drawnCount * 7),
+          ...d,
+        }))
+    })
+    chart.update()
+  }
+
+  function updateCards(state) {
+    ITEMS.forEach(item => {
+      const s = state.find(s => s.name === item.name)
+      const card = document.querySelector(`.card[data-code="${item.code}"]`)
+      if (!card || !s) return
+      card.classList.remove('loading')
+      card.querySelector('.card-remaining').textContent = s.remaining ?? '--'
+      card.querySelector('.card-total').textContent = `/ ${s.total ?? '--'}`
+      const pct = s.total ? Math.round((s.remaining / s.total) * 100) : 0
+      card.querySelector('.card-bar-fill').style.width = pct + '%'
+    })
+  }
+
+  function updateTables(draws) {
+    ITEMS.forEach(item => {
+      const itemDraws = draws.filter(d => d.name === item.name)
+      const container = document.getElementById(`table-${item.code}`)
+      const countEl = document.getElementById(`count-${item.code}`)
+      countEl.textContent = itemDraws.length + ' 筆'
+      if (itemDraws.length === 0) {
+        container.innerHTML = '<div class="empty-msg">— 尚無紀錄 —</div>'
+        return
+      }
+      const rows = [...itemDraws].reverse().map(d => `
+        <tr>
+          <td>${formatJST(new Date(d.detectedAt))}</td>
+          <td class="drawn-count">-${d.drawnCount}</td>
+          <td>${d.beforeRemaining}→${d.afterRemaining}</td>
+        </tr>
+      `).join('')
+      container.innerHTML = `
+        <table>
+          <thead><tr><th>時間(JST)</th><th>抽出</th><th>剩餘</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`
+    })
+  }
+
+  // === Fetch ===
+  async function fetchData() {
+    const [stateRes, drawsRes] = await Promise.all([
+      fetch('/api/state'),
+      fetch('/api/draws'),
+    ])
+    if (!stateRes.ok || !drawsRes.ok) throw new Error('API error')
+    const state = await stateRes.json()
+    const draws = await drawsRes.json()
+    return { state, draws }
+  }
+
+  async function refresh() {
+    const btn = document.getElementById('btn-refresh')
+    btn.textContent = '⟳ LOADING...'
+    btn.disabled = true
+    hideError()
+    try {
+      const { state, draws } = await fetchData()
+      updateCards(state)
+      updateChart(draws)
+      updateTables(draws)
+      document.getElementById('last-updated').textContent =
+        '更新：' + formatJST(new Date())
+      resetCountdown()
+    } catch (e) {
+      showError('資料載入失敗：' + e.message)
+    } finally {
+      btn.textContent = '⟳ REFRESH'
+      btn.disabled = false
+    }
+  }
+
+  async function triggerScraper() {
+    const btn = document.getElementById('btn-trigger')
+    btn.textContent = '▶ 檢查中...'
+    btn.disabled = true
+    hideError()
+    try {
+      const res = await fetch('/trigger?token=THISISFORTWICE')
+      if (!res.ok) throw new Error('trigger failed')
+      btn.textContent = '▶ 等待完成...'
+      await sleep(4000)
+      await refresh()
+    } catch (e) {
+      showError('觸發失敗：' + e.message)
+    } finally {
+      btn.textContent = '▶ 觸發檢查'
+      btn.disabled = false
+    }
+  }
+
+  // === Countdown ===
+  let intervalMs = 10 * 60 * 1000
+  let nextRefreshAt = Date.now() + intervalMs
+  let autoTimer = null
+  let countdownTimer = null
+
+  function setInterval5() {
+    intervalMs = 5 * 60 * 1000
+    document.getElementById('btn-5').classList.add('active')
+    document.getElementById('btn-10').classList.remove('active')
+    resetCountdown()
+  }
+  function setInterval10() {
+    intervalMs = 10 * 60 * 1000
+    document.getElementById('btn-10').classList.add('active')
+    document.getElementById('btn-5').classList.remove('active')
+    resetCountdown()
+  }
+
+  function resetCountdown() {
+    nextRefreshAt = Date.now() + intervalMs
+    clearTimeout(autoTimer)
+    autoTimer = setTimeout(() => { refresh().then(resetCountdown) }, intervalMs)
+  }
+
+  function tickCountdown() {
+    const remaining = Math.max(0, nextRefreshAt - Date.now())
+    const m = String(Math.floor(remaining / 60000)).padStart(2, '0')
+    const s = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0')
+    document.getElementById('countdown').textContent = `${m}:${s}`
+  }
+
+  // === Utils ===
+  function formatJST(date) {
+    return date.toLocaleString('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+    })
+  }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
+  function showError(msg) {
+    const el = document.getElementById('error-msg')
+    el.textContent = msg
+    el.style.display = 'inline'
+  }
+  function hideError() {
+    document.getElementById('error-msg').style.display = 'none'
+  }
+
+  // === Init ===
+  initChart()
+  refresh()
+  resetCountdown()
+  countdownTimer = setInterval(tickCountdown, 1000)
+</script>
+</body>
+</html>
