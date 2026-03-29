@@ -251,6 +251,7 @@
     .table-card[data-code="B"]   .drawn-count { color: #ffe600; }
     .table-card[data-code="C"]   .drawn-count { color: #00ff88; }
     .empty-msg { padding: 12px; font-size: 0.7rem; color: var(--text-dim); text-align: center; }
+    .interval { color: var(--text-dim); font-size: 0.65rem; }
 
     /* Footer */
     .footer {
@@ -583,6 +584,17 @@
     })
   }
 
+  function formatDuration(ms) {
+    if (ms <= 0) return '—'
+    const s = Math.floor(ms / 1000)
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    const sec = s % 60
+    if (h > 0) return `${h}h ${String(m).padStart(2,'0')}m ${String(sec).padStart(2,'0')}s`
+    if (m > 0) return `${m}m ${String(sec).padStart(2,'0')}s`
+    return `${sec}s`
+  }
+
   function updateTables(draws) {
     ITEMS.forEach(item => {
       const itemDraws = draws.filter(d => d.name === item.name)
@@ -593,16 +605,24 @@
         container.innerHTML = '<div class="empty-msg">— 尚無紀錄 —</div>'
         return
       }
-      const rows = [...itemDraws].reverse().map(d => `
+      // itemDraws 升冪（舊→新），reverse 後變新→舊顯示
+      const reversed = [...itemDraws].reverse()
+      const rows = reversed.map((d, i) => {
+        const prev = reversed[i + 1]
+        const interval = prev
+          ? formatDuration(new Date(d.detectedAt) - new Date(prev.detectedAt))
+          : '—'
+        return `
         <tr>
           <td>${formatJST(new Date(d.detectedAt))}</td>
           <td class="drawn-count">-${d.drawnCount}</td>
           <td>${d.beforeRemaining}→${d.afterRemaining}</td>
-        </tr>
-      `).join('')
+          <td class="interval">${interval}</td>
+        </tr>`
+      }).join('')
       container.innerHTML = `
         <table>
-          <thead><tr><th>時間(JST)</th><th>抽出</th><th>剩餘</th></tr></thead>
+          <thead><tr><th>時間(JST)</th><th>抽出</th><th>剩餘</th><th>間隔</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>`
     })
