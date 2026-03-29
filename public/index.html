@@ -291,7 +291,7 @@
 <div class="header">
   <div>
     <h1>🎫 TWICE 抽獎追蹤</h1>
-    <div class="subtitle">CHANCE.FANPLA.JP/TWICE/471 &nbsp;|&nbsp; AUTO MONITOR</div>
+    <div class="subtitle"><a href="https://chance.fanpla.jp/twice/471" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;border-bottom:1px solid #4a5280;padding-bottom:1px;">CHANCE.FANPLA.JP/TWICE/471</a> &nbsp;|&nbsp; AUTO MONITOR</div>
   </div>
 </div>
 
@@ -338,6 +338,13 @@
   <div class="chart-title">▸ DRAW TIMELINE &nbsp; X=時間 &nbsp; Y=品項 &nbsp; 點大小=抽出數量</div>
   <div class="chart-wrap">
     <canvas id="chart"></canvas>
+  </div>
+</div>
+
+<div class="chart-container" style="margin-top:24px;">
+  <div class="chart-title">⏰ 開獎時段分析 &nbsp; X=日期 &nbsp; Y=時刻(JST) &nbsp; 點大小=抽出數量</div>
+  <div class="chart-wrap">
+    <canvas id="hourChart"></canvas>
   </div>
 </div>
 
@@ -452,6 +459,77 @@
     })
   }
 
+  // === Hour Chart 初始化 ===
+  let hourChart
+  function initHourChart() {
+    const ctx = document.getElementById('hourChart').getContext('2d')
+    hourChart = new Chart(ctx, {
+      type: 'bubble',
+      data: { datasets: ITEMS.map(item => ({
+        label: item.code,
+        data: [],
+        backgroundColor: item.color + '99',
+        borderColor: item.color,
+        borderWidth: 1,
+      }))},
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 400 },
+        scales: {
+          x: {
+            type: 'time',
+            time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
+            grid: { color: '#1a1a3e' },
+            ticks: { color: '#4a5280', font: { family: 'Courier New', size: 10 } },
+          },
+          y: {
+            min: 0,
+            max: 23,
+            grid: { color: '#1a1a3e' },
+            ticks: {
+              color: '#4a5280',
+              font: { family: 'Courier New', size: 10 },
+              stepSize: 3,
+              callback: v => String(v).padStart(2, '0') + ':00',
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            labels: { color: '#4a5280', font: { family: 'Courier New', size: 10 }, boxWidth: 10 },
+          },
+          tooltip: {
+            backgroundColor: '#0f0f1a',
+            borderColor: '#1a1a3e',
+            borderWidth: 1,
+            titleColor: '#c0c8e0',
+            bodyColor: '#8090b0',
+            titleFont: { family: 'Courier New' },
+            bodyFont: { family: 'Courier New', size: 11 },
+            callbacks: {
+              title: (items) => {
+                const d = items[0].raw
+                const jst = new Date(new Date(d.detectedAt).getTime() + 9 * 60 * 60 * 1000)
+                const hh = String(jst.getHours()).padStart(2, '0')
+                const mm = String(jst.getMinutes()).padStart(2, '0')
+                return `${hh}:${mm} JST`
+              },
+              label: (item) => {
+                const d = item.raw
+                return [
+                  ` ${d.name}`,
+                  ` 抽出：${d.drawnCount} 個`,
+                  ` 剩餘：${d.beforeRemaining} → ${d.afterRemaining}`,
+                ]
+              },
+            },
+          },
+        },
+      },
+    })
+  }
+
   // === 資料更新 ===
   function updateChart(draws) {
     ITEMS.forEach((item, i) => {
@@ -465,6 +543,30 @@
         }))
     })
     chart.update()
+  }
+
+  function updateHourChart(draws) {
+    ITEMS.forEach((item, i) => {
+      hourChart.data.datasets[i].data = draws
+        .filter(d => d.name === item.name)
+        .map(d => {
+          const jst = new Date(new Date(d.detectedAt).getTime() + 9 * 60 * 60 * 1000)
+          // X = 當天凌晨（UTC，供 Chart.js time scale 使用）
+          const midnightJST = new Date(jst.getFullYear(), jst.getMonth(), jst.getDate())
+          const midnightUTC = new Date(midnightJST.getTime() - 9 * 60 * 60 * 1000)
+          return {
+            x: midnightUTC,
+            y: jst.getHours(),
+            r: Math.max(5, d.drawnCount * 7),
+            name: d.name,
+            drawnCount: d.drawnCount,
+            beforeRemaining: d.beforeRemaining,
+            afterRemaining: d.afterRemaining,
+            detectedAt: d.detectedAt,
+          }
+        })
+    })
+    hourChart.update()
   }
 
   function updateCards(state) {
@@ -526,6 +628,7 @@
       const { state, draws } = await fetchData()
       updateCards(state)
       updateChart(draws)
+      updateHourChart(draws)
       updateTables(draws)
       document.getElementById('last-updated').textContent =
         '更新：' + formatJST(new Date())
@@ -609,6 +712,7 @@
 
   // === Init ===
   initChart()
+  initHourChart()
   refresh()
   resetCountdown()
   countdownTimer = setInterval(tickCountdown, 1000)
