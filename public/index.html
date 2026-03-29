@@ -478,18 +478,19 @@
         animation: { duration: 400 },
         scales: {
           x: {
-            min: 0,
-            max: 23,
+            min: -1,
+            max: 24,
             grid: { color: '#1a1a3e' },
             ticks: {
               color: '#4a5280',
               font: { family: 'Courier New', size: 10 },
               stepSize: 3,
-              callback: v => String(v).padStart(2, '0') + ':00',
+              callback: v => (v >= 0 && v <= 23) ? String(v).padStart(2, '0') + ':00' : '',
             },
           },
           y: {
             type: 'time',
+            min: '2026-03-27',
             time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
             grid: { color: '#1a1a3e' },
             ticks: { color: '#4a5280', font: { family: 'Courier New', size: 10 } },
