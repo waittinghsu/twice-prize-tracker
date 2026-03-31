@@ -343,7 +343,7 @@
 </div>
 
 <div class="chart-container" style="margin-top:24px;">
-  <div class="chart-title">⏰ 開獎時段分析 &nbsp; X=時刻(JST) &nbsp; Y=日期 &nbsp; 點大小=抽出數量</div>
+  <div class="chart-title">⏰ 開獎時段分析 &nbsp; X=時刻(台灣) &nbsp; Y=日期 &nbsp; 點大小=抽出數量</div>
   <div class="chart-wrap">
     <canvas id="hourChart"></canvas>
   </div>
@@ -512,10 +512,10 @@
             callbacks: {
               title: (items) => {
                 const d = items[0].raw
-                const jst = new Date(new Date(d.detectedAt).getTime() + 9 * 60 * 60 * 1000)
-                const hh = String(jst.getUTCHours()).padStart(2, '0')
-                const mm = String(jst.getUTCMinutes()).padStart(2, '0')
-                return `${hh}:${mm} JST`
+                const twn = new Date(new Date(d.detectedAt).getTime() + 8 * 60 * 60 * 1000)
+                const hh = String(twn.getUTCHours()).padStart(2, '0')
+                const mm = String(twn.getUTCMinutes()).padStart(2, '0')
+                return `${hh}:${mm} 台灣`
               },
               label: (item) => {
                 const d = item.raw
@@ -552,10 +552,10 @@
       hourChart.data.datasets[i].data = draws
         .filter(d => d.name === item.name)
         .map(d => {
-          const jst = new Date(new Date(d.detectedAt).getTime() + 9 * 60 * 60 * 1000)
-          // 手動加 +9h 後，用 UTC 方法讀取才是真正的 JST 時間
-          const hour = jst.getUTCHours()
-          const midnightUTC = new Date(Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate()) - 9 * 60 * 60 * 1000)
+          const twn = new Date(new Date(d.detectedAt).getTime() + 8 * 60 * 60 * 1000)
+          // 手動加 +8h 後，用 UTC 方法讀取才是真正的台灣時間
+          const hour = twn.getUTCHours()
+          const midnightUTC = new Date(Date.UTC(twn.getUTCFullYear(), twn.getUTCMonth(), twn.getUTCDate()) - 8 * 60 * 60 * 1000)
           return {
             x: hour,
             y: midnightUTC,
@@ -622,7 +622,7 @@
       }).join('')
       container.innerHTML = `
         <table>
-          <thead><tr><th>時間(JST)</th><th>抽出</th><th>剩餘</th><th>間隔</th></tr></thead>
+          <thead><tr><th>時間(台灣)</th><th>抽出</th><th>剩餘</th><th>間隔</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>`
     })
@@ -715,8 +715,8 @@
 
   // === Utils ===
   function formatJST(date) {
-    return date.toLocaleString('ja-JP', {
-      timeZone: 'Asia/Tokyo',
+    return date.toLocaleString('zh-TW', {
+      timeZone: 'Asia/Taipei',
       month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit',
     })
