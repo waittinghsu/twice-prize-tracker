@@ -184,9 +184,14 @@
       text-transform: uppercase;
       margin-bottom: 16px;
     }
+    .chart-scroll {
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
     .chart-wrap {
       position: relative;
       height: 260px;
+      min-width: 100%;
     }
 
     /* Tables */
@@ -337,14 +342,16 @@
 
 <div class="chart-container">
   <div class="chart-title">▸ DRAW TIMELINE &nbsp; X=時間 &nbsp; Y=品項 &nbsp; 點大小=抽出數量</div>
-  <div class="chart-wrap">
-    <canvas id="chart"></canvas>
+  <div class="chart-scroll">
+    <div class="chart-wrap" id="chartScrollInner">
+      <canvas id="chart"></canvas>
+    </div>
   </div>
 </div>
 
 <div class="chart-container" style="margin-top:24px;">
   <div class="chart-title">⏰ 開獎時段分析 &nbsp; X=時刻(台灣) &nbsp; Y=日期 &nbsp; 點大小=抽出數量</div>
-  <div class="chart-wrap">
+  <div class="chart-wrap" id="hourChartWrap">
     <canvas id="hourChart"></canvas>
   </div>
 </div>
@@ -544,6 +551,16 @@
           ...d,
         }))
     })
+    // 根據日期範圍動態撐寬，每天 80px
+    if (draws.length > 0) {
+      const times = draws.map(d => new Date(d.detectedAt).getTime())
+      const minT = Math.min(...times)
+      const maxT = Math.max(...times)
+      const days = Math.ceil((maxT - minT) / (1000 * 60 * 60 * 24)) + 2
+      const scrollEl = document.getElementById('chartScrollInner').parentElement
+      const calcWidth = Math.max(scrollEl.clientWidth, days * 80)
+      document.getElementById('chartScrollInner').style.width = calcWidth + 'px'
+    }
     chart.update()
   }
 
@@ -568,6 +585,15 @@
           }
         })
     })
+    // 根據唯一日期數量動態調高，每天 50px
+    const uniqueDates = new Set(draws.map(d => {
+      const tw = new Date(new Date(d.detectedAt).getTime() + 8 * 60 * 60 * 1000)
+      return `${tw.getUTCFullYear()}-${tw.getUTCMonth()}-${tw.getUTCDate()}`
+    }))
+    const newHeight = Math.max(260, uniqueDates.size * 50 + 80)
+    const wrap = document.getElementById('hourChartWrap')
+    wrap.style.height = newHeight + 'px'
+    hourChart.resize()
     hourChart.update()
   }
 
