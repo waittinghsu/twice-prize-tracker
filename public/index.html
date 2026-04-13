@@ -226,6 +226,7 @@
       align-items: center;
     }
     .table-header .code { font-weight: bold; }
+    .table-header .elapsed { font-size: 0.6rem; color: var(--text-dim); margin-left: auto; margin-right: 8px; }
     .table-header .count { font-size: 0.65rem; color: var(--text-dim); }
     .table-card[data-code="A-1"] .table-header { color: #00f5ff; }
     .table-card[data-code="A-2"] .table-header { color: #ff00aa; }
@@ -359,19 +360,19 @@
 <div class="tables-title">▸ 各品項抽取紀錄</div>
 <div class="tables-grid">
   <div class="table-card" data-code="A-1">
-    <div class="table-header"><span class="code">A-1</span><span class="count" id="count-A-1">0 筆</span></div>
+    <div class="table-header"><span class="code">A-1</span><span class="elapsed" id="elapsed-A-1"></span><span class="count" id="count-A-1">0 筆</span></div>
     <div id="table-A-1"><div class="empty-msg">— 尚無紀錄 —</div></div>
   </div>
   <div class="table-card" data-code="A-2">
-    <div class="table-header"><span class="code">A-2</span><span class="count" id="count-A-2">0 筆</span></div>
+    <div class="table-header"><span class="code">A-2</span><span class="elapsed" id="elapsed-A-2"></span><span class="count" id="count-A-2">0 筆</span></div>
     <div id="table-A-2"><div class="empty-msg">— 尚無紀錄 —</div></div>
   </div>
   <div class="table-card" data-code="B">
-    <div class="table-header"><span class="code">B</span><span class="count" id="count-B">0 筆</span></div>
+    <div class="table-header"><span class="code">B</span><span class="elapsed" id="elapsed-B"></span><span class="count" id="count-B">0 筆</span></div>
     <div id="table-B"><div class="empty-msg">— 尚無紀錄 —</div></div>
   </div>
   <div class="table-card" data-code="C">
-    <div class="table-header"><span class="code">C</span><span class="count" id="count-C">0 筆</span></div>
+    <div class="table-header"><span class="code">C</span><span class="elapsed" id="elapsed-C"></span><span class="count" id="count-C">0 筆</span></div>
     <div id="table-C"><div class="empty-msg">— 尚無紀錄 —</div></div>
   </div>
 </div>
@@ -626,7 +627,15 @@
       const itemDraws = draws.filter(d => d.name === item.name)
       const container = document.getElementById(`table-${item.code}`)
       const countEl = document.getElementById(`count-${item.code}`)
+      const elapsedEl = document.getElementById(`elapsed-${item.code}`)
       countEl.textContent = itemDraws.length + ' 筆'
+      if (itemDraws.length > 0) {
+        const lastDraw = itemDraws[itemDraws.length - 1]
+        const elapsed = Date.now() - new Date(lastDraw.detectedAt).getTime()
+        elapsedEl.textContent = '距上次 ' + formatDuration(elapsed)
+      } else {
+        elapsedEl.textContent = ''
+      }
       if (itemDraws.length === 0) {
         container.innerHTML = '<div class="empty-msg">— 尚無紀錄 —</div>'
         return
